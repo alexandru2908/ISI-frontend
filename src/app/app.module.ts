@@ -17,12 +17,19 @@ import { AngularFireDatabaseModule } from '@angular/fire/compat/database';
 
 import { FirebaseService } from './services/firebase';
 import { environment } from '../environments/environment';
+import { CommonModule } from "@angular/common";
+
+import { RegisterComponent } from './pages/register/register.component'; // Import RegisterComponent
+import {DashboardAdminComponent} from './pages/dashboard-admin/dashboard-admin.component'; // Import DashboardAdminComponent
+import { HomeComponent } from './pages/home/home.component'; // Import HomeComponent
+
 
 @NgModule({
-  declarations: [AppComponent, EsriMapComponent],
+  declarations: [AppComponent, EsriMapComponent, RegisterComponent, DashboardAdminComponent, HomeComponent], // Add RegisterComponent to declarations
   imports: [
     BrowserModule,
     AppRoutingModule,
+    CommonModule,
     MatTabsModule,
     MatButtonModule,
     MatDividerModule,

@@ -86,3 +86,8 @@
     align-items: center;
     height: 100vh;
   }
+
+  .map-view {
+    flex: 1; /* Takes up the remaining space next to the sidebar */
+    height: 100%;
+  }

@@ -27,7 +27,9 @@ export class HomeComponent {
         console.log(res);
 
         if (res.message === "User logged in successfully" ) {
-            if (res.role === "admin") {
+
+            localStorage.setItem('id', JSON.stringify(res.user_details)); 
+            if (res.user_details.role === "admin") {
                 window.location.href = "/dashboard-admin";
             } else {
                 window.location.href = "/dashboard";
