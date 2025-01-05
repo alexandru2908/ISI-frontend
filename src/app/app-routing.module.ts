@@ -2,6 +2,8 @@ import { ExtraOptions, RouterModule, Routes } from '@angular/router';
 import { NgModule } from '@angular/core';
 import { EsriMapComponent } from './pages/esri-map/esri-map.component';
 import { HomeComponent } from './pages/home/home.component';
+import { DashboardComponent } from './pages/dashboard/dashboard.component';
+import { RegisterComponent } from './register/register.component';
 
 
 export const routes: Routes = [
@@ -12,6 +14,14 @@ export const routes: Routes = [
   {
     path: 'map',
     component: EsriMapComponent,
+  },
+  {
+    path : 'dashboard',
+    component : DashboardComponent
+  },
+  {
+    path : 'register',
+    component : RegisterComponent
   },
   {
     path: '',

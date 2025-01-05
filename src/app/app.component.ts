@@ -20,7 +20,15 @@ export class AppComponent {
   }, {
     name: 'Map',
     link: '/map'
-  }];
+  },
+  {
+      name: 'Dashboard',
+      link: '/dashboard'
+  },
+  { 
+      name: 'Register',
+      link: '/register'
+    }];
 
   activeTab = this.tabs[0].link;
 

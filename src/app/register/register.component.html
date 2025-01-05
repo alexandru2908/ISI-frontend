@@ -27,7 +27,7 @@
                 </svg>
             </span>
         </div>
-        <!-- <div class="dropdown">
+        <div class="dropdown">
             <div class="select" (click)="toggleDropdown()">
                 <div class="selected" [attr.data-default]="selectedOption">
                     {{ selectedOption }}
@@ -48,17 +48,17 @@
                     </div>
                 </div>
             </div>
-        </div> -->
+        </div>
 
 
         <!-- Buton pentru login -->
-        <button class="submit" (click)="login(emailInput.value, passwordInput.value)">
+        <button class="submit" (click)="register(emailInput.value, passwordInput.value)">
             Sign in
         </button>
 
         <p class="signup-link">
             No account?
-            <a (click)="goToRegister()">Sign up</a>
+            <a href="">Sign up</a>
         </p>
     </div>
 </div>
