@@ -23,11 +23,15 @@ export class HomeComponent {
                 "password": pass
             }) })
 
-        let res = await username.text();
+        let res = await username.json();
         console.log(res);
 
-        if (res === "User logged in successfully") {
-            window.location.href = "/dashboard";
+        if (res.message === "User logged in successfully" ) {
+            if (res.role === "admin") {
+                window.location.href = "/dashboard-admin";
+            } else {
+                window.location.href = "/dashboard";
+            }
         }
     }
 
