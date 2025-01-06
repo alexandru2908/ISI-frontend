@@ -7,6 +7,7 @@ import { RegisterComponent } from './pages/register/register.component';
 import { DashboardAdminComponent } from './pages/dashboard-admin/dashboard-admin.component';
 import { ViewCarComponent } from './pages/view_car/view_car.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
+import { ViewTripsComponent } from './pages/view_trips/view_trips.component';
 
 
 export const routes: Routes = [
@@ -37,6 +38,11 @@ export const routes: Routes = [
   {
     path: 'dashboard',
     component: DashboardComponent
+  },
+  {
+    path: 'view_trips',
+    component: ViewTripsComponent
+
   },
   {
     path: '',

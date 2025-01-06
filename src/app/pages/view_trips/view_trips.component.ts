@@ -32,18 +32,21 @@ import * as locator from "@arcgis/core/rest/locator";
 import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import Search from "@arcgis/core/widgets/Search.js";
+import { get } from "http";
 
 
 @Component({
-    selector: 'app-dashboard_admin',
-    templateUrl: './dashboard-admin.component.html',
-    styleUrls: ['./dashboard-admin.component.scss']
+    selector: 'app-view_trips',
+    templateUrl: './view_trips.component.html',
+    styleUrls: ['./view_trips.component.scss']
 })
-export class DashboardAdminComponent implements OnInit, OnDestroy {
+export class ViewTripsComponent implements OnInit, OnDestroy {
     user_details: any = {};
     agency_details: any = {};
+    selectedPoint: any;
 
-    current_cars: any = [];
+    current_trips: any = [];
+    car_maper: any = {};
 
     @Output() mapLoadedEvent = new EventEmitter<boolean>();
 
@@ -53,6 +56,7 @@ export class DashboardAdminComponent implements OnInit, OnDestroy {
     view!: esri.MapView;
     graphicsLayer!: esri.GraphicsLayer;
     graphicsLayerUserPoints!: esri.GraphicsLayer;
+    graphicsLayerDestinationPoints!: esri.GraphicsLayer;
     graphicsLayerRoutes!: esri.GraphicsLayer;
     trailheadsLayer!: esri.FeatureLayer;
 
@@ -82,7 +86,6 @@ export class DashboardAdminComponent implements OnInit, OnDestroy {
         console.log('Year:', year);
         console.log('Color:', color);
         console.log('Prices:', prices);
-        console.log('Agency:', this.user_details.agency);
 
         let res = await fetch('http://localhost:3000/add-car', {
             method: 'POST',
@@ -129,6 +132,7 @@ export class DashboardAdminComponent implements OnInit, OnDestroy {
 
     }
     async ngOnInit(): Promise<void> {
+        
         try {
             await this.initializeMap();
             this.loaded = this.view.ready;
@@ -138,56 +142,135 @@ export class DashboardAdminComponent implements OnInit, OnDestroy {
         }
         this.user_details = JSON.parse(localStorage.getItem('id'));
         console.log('User Details:', this.user_details); // Debugging line
-        await this.loadAgencyDetails();
 
-        console.log('current_cars:', this.current_cars);
+        this.current_trips = await this.get_trips();
+        console.log('current_cars:', this.current_trips);
+        let trip_cars = await this.get_cars();
+        trip_cars.forEach(car => {
+            this.car_maper[car.id] = car;
+        });
+        console.log('car mapper:', this.car_maper);
 
-        this.current_cars.forEach((car) => {
-            this.addPoint(car.location_x, car.location_y, car.car_brand, car.car_model, car.car_year, car.car_hour_price, car.car_color);
-            console.log('am adaugat', car.location_x, car.location_y);
+        this.current_trips.forEach(trip => {
+            console.log("trip car id", trip.car_id)
+            console.log("car maper de trip", this.car_maper[trip.car_id]);
         });
 
     }
 
-    async loadAgencyDetails() {
-        try {
-            this.agency_details = await this.get_Agency();
-            this.current_cars = await this.get_cars();
-            console.log('Agency Details:', this.agency_details); // Debugging line
-            console.log('Cars:', this.current_cars);
-        } catch (error) {
-            console.error('Error fetching agency details:', error);
+    async display_route(trip) {
+
+        this.clearRouter();
+        console.log('Display route:', trip);
+        let car = this.car_maper[trip.car_id];
+        console.log('Car:', car);
+
+        this.addDestinationPoint(car.location_x, car.location_y);
+        this.addDestinationPoint(trip.end_location_x, trip.end_location_y);
+        this.calculateRoute();
+
+        await this.addRouting(car.car_brand, car.car_model, car.car_year, car.car_hour_price, car.car_color, car.location_x, car.location_y, trip.end_location_x, trip.end_location_y);
+        
+
+
+    }
+
+    async rezerva(car_details) {
+        if (!this.selectedPoint) {
+            alert('Selecteaza un punct pe harta');
+            return;
         }
-    }
-
-    async get_Agency() {
-        let res = await fetch('http://localhost:3000/get-agencies');
-
-        let data = await res.json();
-
-        let current_agency = {}
-        data.forEach((agency) => {
-            if (agency.agency_name === this.user_details.agency) {
-                current_agency = agency;
-            }
+        // console.log("car:::", car_details)
+        console.log('Rezerva:', car_details.id, this.user_details.id, this.selectedPoint.latitude, this.selectedPoint.longitude);
+        let res = await fetch ('http://localhost:3000/add-trip', { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                user_id: this.user_details.id,
+                car_id: car_details.id,
+                end_location_x: this.selectedPoint.latitude,
+                end_location_y: this.selectedPoint.longitude
+            })
         });
-        console.log('Agency:', current_agency);
-        return current_agency;
+        let res_json = await res.json();
+        console.log('Rezerva:', res_json);
+
+        if (res_json.error == false) {
+            console.log('Rezervare efectuata cu succes', res_json);
+            localStorage.setItem('car', JSON.stringify(car_details));
+            window.location.href = 'http://localhost:4200/view_car';
+        } else {
+            console.log('Eroare la rezervare', res_json);
+        }
+
     }
 
     async get_cars() {
         let res = await fetch('http://localhost:3000/get-cars');
         let data = await res.json();
         console.log('Cars_data:', data); // Debugging line
-        let current_car = []
-        data.forEach((car) => {
-            console.log('Compar', car.car_agency, this.user_details.agency);
-            if (car.car_agency == this.user_details.agency) {
-                current_car.push(car);
-            }
-        })
-        console.log('Cars:', current_car);
-        return current_car;
+        // console.log('Data:', data);
+        
+    
+        return data;
+    }
+
+    
+
+    addDestinationPoint(lat: number, lng: number): void {
+        this.graphicsLayerDestinationPoints.removeAll();
+        const point = new Point({
+            longitude: lng,
+            latitude: lat
+        });
+
+        const markerSymbol = new SimpleMarkerSymbol({
+            style: "circle",
+            color: [100, 169, 40],  // Orange
+            outline: {
+                color: [255, 255, 255], // White
+                width: 1
+            },
+            size: 8
+        });
+
+        const popupTemplate = {
+            title: "New Destination"
+        };
+
+        const pointGraphic = new Graphic({
+            geometry: point,
+            symbol: markerSymbol,
+            popupTemplate: popupTemplate
+        });
+
+        this.graphicsLayerDestinationPoints.add(pointGraphic);
+    }
+
+    async get_trips() {
+        let res = await fetch('http://localhost:3000/get-trips-by-user', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                user_id: this.user_details.id
+            })
+        });
+
+        let res_json = await res.json();
+        console.log('get_trips:', res_json);
+
+        if (res_json.error == false) {
+            console.log('Trips found:', res_json);
+            return res_json.trips;
+        } else {
+            console.log('Error getting trips:', res_json);
+            return [];
+        }
+        
     }
 
 
@@ -221,13 +304,13 @@ export class DashboardAdminComponent implements OnInit, OnDestroy {
             await this.view.when();
             console.log("ArcGIS map loaded");
 
-            this.addRouting();
+            // this.addRouting();
             const searchWidget = new Search({
                 view: this.view
             });
-           
+
             this.view.ui.add(searchWidget, {
-                position: "top-right", 
+                position: "top-right",
                 index: 2
             });
 
@@ -264,48 +347,17 @@ export class DashboardAdminComponent implements OnInit, OnDestroy {
     private addGraphicsLayer(): void {
         this.graphicsLayer = new GraphicsLayer();
         this.graphicsLayerUserPoints = new GraphicsLayer();
+        this.graphicsLayerDestinationPoints = new GraphicsLayer();
         this.graphicsLayerRoutes = new GraphicsLayer();
-        this.map.addMany([this.graphicsLayer, this.graphicsLayerUserPoints, this.graphicsLayerRoutes]);
+        this.map.addMany([this.graphicsLayer, this.graphicsLayerUserPoints, this.graphicsLayerRoutes, this.graphicsLayerDestinationPoints]);
     }
 
-    private addRouting(): void {
-        if (!this.view) return;
-
-        this.view.on("click", async (event) => {
-            try {
-                const response = await this.view.hitTest(event);
-                const result = response.results.find(r => r.layer === this.trailheadsLayer);
-
-                if (result?.mapPoint) {
-                    const point = result.mapPoint;
-                    console.log("Selected point:", point);
-
-                    // if (this.graphicsLayerUserPoints.graphics.length === 0) {
-                    //     this.addPoint(point.latitude, point.longitude);
-                    // } else if (this.graphicsLayerUserPoints.graphics.length === 1) {
-                    //     this.addPoint(point.latitude, point.longitude);
-                    //     await this.calculateRoute();
-                    // } else {
-                    //     this.removePoints();
-                    // }
-                }
-            } catch (error) {
-                console.error("Error in click handler:", error);
-            }
-        });
-    }
-
-    // private getPoint(): void {
-    //     if (!this.view) return;
-
-    //     this.view.on("click", async (event) => {
-    //         const point = this.view.toMap(event);
-    //         console.log("Map clicked:", point.longitude, point.latitude);
-
-    //         this.addPoint(point.latitude, point.longitude);
-
-    //     });
-    // }
+    private async addRouting(car_brand, car_model, car_year, car_price, car_color, car_location_x, car_location_y, destination_lo_x, destination_loc_y): Promise<void> {
+        console.log(car_location_x, car_location_y, destination_lo_x, destination_loc_y);
+         this.addPoint(car_location_x, car_location_y, car_brand, car_model, car_year, car_price, car_color);
+         this.addPoint(destination_lo_x, destination_loc_y, car_brand, car_model, car_year, car_price, car_color);
+         await this.calculateRoute();
+     }
 
     private addPoint(lat: number, lng: number, car_brand, car_model, car_year, car_price, car_color): void {
         const point = new Point({

@@ -32,6 +32,7 @@ import * as locator from "@arcgis/core/rest/locator";
 import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import Search from "@arcgis/core/widgets/Search.js";
+import { get } from "http";
 
 
 @Component({
@@ -42,6 +43,7 @@ import Search from "@arcgis/core/widgets/Search.js";
 export class DashboardComponent implements OnInit, OnDestroy {
     user_details: any = {};
     agency_details: any = {};
+    selectedPoint: any;
 
     current_cars: any = [];
 
@@ -53,6 +55,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     view!: esri.MapView;
     graphicsLayer!: esri.GraphicsLayer;
     graphicsLayerUserPoints!: esri.GraphicsLayer;
+    graphicsLayerDestinationPoints!: esri.GraphicsLayer;
     graphicsLayerRoutes!: esri.GraphicsLayer;
     trailheadsLayer!: esri.FeatureLayer;
 
@@ -128,6 +131,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     }
     async ngOnInit(): Promise<void> {
+        
         try {
             await this.initializeMap();
             this.loaded = this.view.ready;
@@ -137,8 +141,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
         this.user_details = JSON.parse(localStorage.getItem('id'));
         console.log('User Details:', this.user_details); // Debugging line
-        await this.loadAgencyDetails();
 
+        this.current_cars = await this.get_cars();
         console.log('current_cars:', this.current_cars);
 
         this.current_cars.forEach((car) => {
@@ -148,30 +152,88 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     }
 
-    async loadAgencyDetails() {
-        try {
-            this.agency_details = await this.get_Agency();
-            this.current_cars = await this.get_cars();
-            console.log('Agency Details:', this.agency_details); // Debugging line
-            console.log('Cars:', this.current_cars);
-        } catch (error) {
-            console.error('Error fetching agency details:', error);
-        }
+    view_trips() {
+        window.location.href = 'http://localhost:4200/view_trips';
     }
 
-    async get_Agency() {
-        let res = await fetch('http://localhost:3000/get-agencies');
-
-        let data = await res.json();
-
-        let current_agency = {}
-        data.forEach((agency) => {
-            if (agency.agency_name === this.user_details.agency) {
-                current_agency = agency;
-            }
+    async rezerva(car_details) {
+        if (!this.selectedPoint) {
+            alert('Selecteaza un punct pe harta');
+            return;
+        }
+        // console.log("car:::", car_details)
+        console.log('Rezerva:', car_details.id, this.user_details.id, this.selectedPoint.latitude, this.selectedPoint.longitude);
+        let res = await fetch ('http://localhost:3000/add-trip', { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                user_id: this.user_details.id,
+                car_id: car_details.id,
+                end_location_x: this.selectedPoint.latitude,
+                end_location_y: this.selectedPoint.longitude
+            })
         });
-        console.log('Agency:', current_agency);
-        return current_agency;
+        let res_json = await res.json();
+        console.log('Rezerva:', res_json);
+
+        if (res_json.error == false) {
+            console.log('Rezervare efectuata cu succes', res_json);
+            localStorage.setItem('car', JSON.stringify(car_details));
+            window.location.href = 'http://localhost:4200/view_car';
+        } else {
+            console.log('Eroare la rezervare', res_json);
+        }
+
+
+
+
+
+
+    }
+
+    select_point() {
+        if (!this.view) return;
+        console.log('Select point');
+        this.view.on("click", async (event) => {
+            const point = this.view.toMap(event);
+            console.log("Map clicked:", point.longitude, point.latitude);
+            
+            this.selectedPoint = point;
+            this.addDestinationPoint(point.latitude, point.longitude); 
+            
+        });
+    }
+
+    addDestinationPoint(lat: number, lng: number): void {
+        this.graphicsLayerDestinationPoints.removeAll();
+        const point = new Point({
+            longitude: lng,
+            latitude: lat
+        });
+
+        const markerSymbol = new SimpleMarkerSymbol({
+            style: "circle",
+            color: [100, 169, 40],  // Orange
+            outline: {
+                color: [255, 255, 255], // White
+                width: 1
+            },
+            size: 8
+        });
+
+        const popupTemplate = {
+            title: "New Destination"
+        };
+
+        const pointGraphic = new Graphic({
+            geometry: point,
+            symbol: markerSymbol,
+            popupTemplate: popupTemplate
+        });
+
+        this.graphicsLayerDestinationPoints.add(pointGraphic);
     }
 
     async get_cars() {
@@ -179,9 +241,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
         let data = await res.json();
         console.log('Cars_data:', data); // Debugging line
         let current_car = []
+        console.log('Data:', data);
         data.forEach((car) => {
-            console.log('Compar', car.car_agency, this.user_details.agency);
-            if (car.car_agency == this.user_details.agency) {
+
+            if (car.is_used === false) {
                 current_car.push(car);
             }
         })
@@ -221,12 +284,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
             console.log("ArcGIS map loaded");
 
             this.addRouting();
+            this.select_point();
             const searchWidget = new Search({
                 view: this.view
             });
-           
+
             this.view.ui.add(searchWidget, {
-                position: "top-right", 
+                position: "top-right",
                 index: 2
             });
 
@@ -263,8 +327,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private addGraphicsLayer(): void {
         this.graphicsLayer = new GraphicsLayer();
         this.graphicsLayerUserPoints = new GraphicsLayer();
+        this.graphicsLayerDestinationPoints = new GraphicsLayer();
         this.graphicsLayerRoutes = new GraphicsLayer();
-        this.map.addMany([this.graphicsLayer, this.graphicsLayerUserPoints, this.graphicsLayerRoutes]);
+        this.map.addMany([this.graphicsLayer, this.graphicsLayerUserPoints, this.graphicsLayerRoutes, this.graphicsLayerDestinationPoints]);
     }
 
     private addRouting(): void {
@@ -285,7 +350,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
                     //     this.addPoint(point.latitude, point.longitude);
                     //     await this.calculateRoute();
                     // } else {
-                    //     this.removePoints();
+                        // this.removePoints();
                     // }
                 }
             } catch (error) {

@@ -24,11 +24,13 @@ import {DashboardAdminComponent} from './pages/dashboard-admin/dashboard-admin.c
 import { HomeComponent } from './pages/home/home.component'; // Import HomeComponent
 import { ViewCarComponent } from './pages/view_car/view_car.component'; // Import ViewCarComponent
 import { DashboardComponent } from './pages/dashboard/dashboard.component'; // Import DashboardComponent
+import { ViewTripsComponent } from './pages/view_trips/view_trips.component'; // Import ViewTripsComponent
 
 
 
 @NgModule({
-  declarations: [AppComponent, EsriMapComponent, RegisterComponent, DashboardAdminComponent, HomeComponent, ViewCarComponent, DashboardComponent], // Add RegisterComponent to declarations
+  declarations: [AppComponent, EsriMapComponent, RegisterComponent, 
+    DashboardAdminComponent, HomeComponent, ViewCarComponent, DashboardComponent, ViewTripsComponent], // Add RegisterComponent to declarations
   imports: [
     BrowserModule,
     AppRoutingModule,

@@ -1,0 +1,21 @@
+<div class="container">
+
+    <div class="cars_container">
+        <div class="cars">
+            <div class="car" *ngFor="let trip of current_trips">
+                <p (click)="display_route(trip)">{{car_maper[trip.car_id]?.car_brand}}</p>
+                
+
+            </div>
+
+        </div>
+        
+
+
+    </div>
+
+    <div #mapViewNode class="map-view"></div>
+
+
+
+</div>
