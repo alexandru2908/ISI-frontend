@@ -61,6 +61,10 @@ export class RegisterComponent {
 
     async register(user : string, pass : string) {
 
+        if (this.selectedAgency == undefined) {
+            this.selectedAgency = "None";
+        }
+
         let res = await fetch ('http://localhost:3000/add-user', {
             method: 'POST',
             headers: {
@@ -70,11 +74,12 @@ export class RegisterComponent {
                 "username": user,
                 "password": pass,
                 "role": this.selectedOption,
-                "agency": this.selectedAgency
+                "agency": this.selectedAgency 
             }) })
+        console.log('User:', user, 'Pass:', pass, 'Role:', this.selectedOption, 'Agency:', this.selectedAgency); // Debugging line
         
 
-        // console.log(res.status);
+        console.log(res);
         
  
         if (res.status == 201) {

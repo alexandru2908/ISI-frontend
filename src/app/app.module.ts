@@ -22,10 +22,13 @@ import { CommonModule } from "@angular/common";
 import { RegisterComponent } from './pages/register/register.component'; // Import RegisterComponent
 import {DashboardAdminComponent} from './pages/dashboard-admin/dashboard-admin.component'; // Import DashboardAdminComponent
 import { HomeComponent } from './pages/home/home.component'; // Import HomeComponent
+import { ViewCarComponent } from './pages/view_car/view_car.component'; // Import ViewCarComponent
+import { DashboardComponent } from './pages/dashboard/dashboard.component'; // Import DashboardComponent
+
 
 
 @NgModule({
-  declarations: [AppComponent, EsriMapComponent, RegisterComponent, DashboardAdminComponent, HomeComponent], // Add RegisterComponent to declarations
+  declarations: [AppComponent, EsriMapComponent, RegisterComponent, DashboardAdminComponent, HomeComponent, ViewCarComponent, DashboardComponent], // Add RegisterComponent to declarations
   imports: [
     BrowserModule,
     AppRoutingModule,

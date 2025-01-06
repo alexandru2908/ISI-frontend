@@ -31,10 +31,11 @@ import * as locator from "@arcgis/core/rest/locator";
 
 import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import Search from "@arcgis/core/widgets/Search.js";
 
 
 @Component({
-    selector: 'app-dashboard',
+    selector: 'app-dashboard_admin',
     templateUrl: './dashboard-admin.component.html',
     styleUrls: ['./dashboard-admin.component.scss']
 })
@@ -67,7 +68,64 @@ export class DashboardAdminComponent implements OnInit, OnDestroy {
     routeUrl = "https://route-api.arcgis.com/arcgis/rest/services/World/Route/NAServer/Route_World";
 
     isConnected = false;
+    @ViewChild('priceInput') priceInput: ElementRef;
+    @ViewChild('modelInput') modelInput: ElementRef;
+    @ViewChild('brandInput') brandInput: ElementRef;
+    @ViewChild('yearInput') yearInput: ElementRef;
+    @ViewChild('colorInput') colorInput: ElementRef;
     constructor() {
+    }
+
+    async submit_car(brand, model, year, color, prices) {
+        console.log('Brand:', brand);
+        console.log('Model:', model);
+        console.log('Year:', year);
+        console.log('Color:', color);
+        console.log('Prices:', prices);
+
+        let res = await fetch('http://localhost:3000/add-car', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                car_agency: this.user_details.agency,
+                car_brand: brand,
+                car_model: model,
+                car_year: year,
+                car_color: color,
+                car_hour_price: prices,
+                is_used: false,
+                location_x: Math.random() / 2 + 44.4,
+                location_y: Math.random() / 2 + 26.0
+            })
+        });
+        let res_json = await res.json();
+
+        if (res_json.error == false) {
+            console.log('Car added successfully', res_json);
+            document.getElementById('island').style.display = 'none';
+            // document.getElementById('modelInput').value = '';
+            // document.getElementById('brandInput').value = '';
+            this.priceInput.nativeElement.value = '';
+            this.modelInput.nativeElement.value = '';
+            this.brandInput.nativeElement.value = '';
+            this.yearInput.nativeElement.value = '';
+            this.colorInput.nativeElement.value = '';
+        } else {
+            console.log('Error adding car', res_json);
+            // append a paragraph to island id
+            let p = document.createElement('p');
+            p.innerHTML = res_json.message;
+            document.getElementById('island').appendChild(p);
+        }
+
+    }
+
+    add_car() {
+        document.getElementById('island').style.display = 'block';
+
+
     }
     async ngOnInit(): Promise<void> {
         try {
@@ -84,7 +142,7 @@ export class DashboardAdminComponent implements OnInit, OnDestroy {
         console.log('current_cars:', this.current_cars);
 
         this.current_cars.forEach((car) => {
-            this.addPoint(car.location_x, car.location_y);
+            this.addPoint(car.location_x, car.location_y, car.car_brand, car.car_model, car.car_year, car.car_hour_price, car.car_color);
             console.log('am adaugat', car.location_x, car.location_y);
         });
 
@@ -163,14 +221,26 @@ export class DashboardAdminComponent implements OnInit, OnDestroy {
             console.log("ArcGIS map loaded");
 
             this.addRouting();
-            this.getPoint();
-            this.addCategoryDropdown();
+            const searchWidget = new Search({
+                view: this.view
+            });
+           
+            this.view.ui.add(searchWidget, {
+                position: "top-right", 
+                index: 2
+            });
 
             return this.view;
         } catch (error) {
             console.error("Error loading the map:", error);
             throw error;
         }
+    }
+
+    view_car(car) {
+        localStorage.setItem('car', JSON.stringify(car));
+        window.location.href = 'http://localhost:4200/view_car';
+
     }
 
     private async addFeatureLayers(): Promise<void> {
@@ -224,19 +294,19 @@ export class DashboardAdminComponent implements OnInit, OnDestroy {
         });
     }
 
-    private getPoint(): void {
-        if (!this.view) return;
+    // private getPoint(): void {
+    //     if (!this.view) return;
 
-        this.view.on("click", async (event) => {
-            const point = this.view.toMap(event);
-            console.log("Map clicked:", point.longitude, point.latitude);
+    //     this.view.on("click", async (event) => {
+    //         const point = this.view.toMap(event);
+    //         console.log("Map clicked:", point.longitude, point.latitude);
 
-            this.addPoint(point.latitude, point.longitude);
+    //         this.addPoint(point.latitude, point.longitude);
 
-        });
-    }
+    //     });
+    // }
 
-    private addPoint(lat: number, lng: number): void {
+    private addPoint(lat: number, lng: number, car_brand, car_model, car_year, car_price, car_color): void {
         const point = new Point({
             longitude: lng,
             latitude: lat
@@ -252,9 +322,15 @@ export class DashboardAdminComponent implements OnInit, OnDestroy {
             size: 8
         });
 
+        const popupTemplate = {
+            title: `Car brand:${car_brand} `,
+            content: `Car model: ${car_model} <br> Car year: ${car_year} <br> Car price: ${car_price} <br> Car color: ${car_color}`
+        };
+
         const pointGraphic = new Graphic({
             geometry: point,
-            symbol: markerSymbol
+            symbol: markerSymbol,
+            popupTemplate: popupTemplate
         });
 
         this.graphicsLayerUserPoints.add(pointGraphic);
