@@ -84,6 +84,8 @@ export class DashboardAdminComponent implements OnInit, OnDestroy {
         console.log('Prices:', prices);
         console.log('Agency:', this.user_details.agency);
 
+
+
         let res = await fetch('http://localhost:3000/add-car', {
             method: 'POST',
             headers: {
@@ -141,6 +143,7 @@ export class DashboardAdminComponent implements OnInit, OnDestroy {
         await this.loadAgencyDetails();
 
         console.log('current_cars:', this.current_cars);
+
 
         this.current_cars.forEach((car) => {
             this.addPoint(car.location_x, car.location_y, car.car_brand, car.car_model, car.car_year, car.car_hour_price, car.car_color);
@@ -239,7 +242,10 @@ export class DashboardAdminComponent implements OnInit, OnDestroy {
     }
 
     view_car(car) {
+        console.log('View car:', car);
         localStorage.setItem('car', JSON.stringify(car));
+
+
         window.location.href = 'http://localhost:4200/view_car';
 
     }
@@ -497,5 +503,7 @@ export class DashboardAdminComponent implements OnInit, OnDestroy {
         }
     }
 
+    
+    
 
 }

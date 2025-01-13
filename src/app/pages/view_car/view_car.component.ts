@@ -112,6 +112,8 @@ export class ViewCarComponent implements OnInit, OnDestroy {
         }
         else {
             console.log('No trip for this car');
+            alert('No trip for this car');
+            window.location.href = 'http://localhost:4200/dashboard-admin';
         }
 
 

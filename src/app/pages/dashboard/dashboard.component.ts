@@ -30,6 +30,7 @@ import Polygon from "@arcgis/core/geometry/Polygon";
 import * as locator from "@arcgis/core/rest/locator";
 
 import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol";
+import PictureMarkerSymbol from "@arcgis/core/symbols/PictureMarkerSymbol";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import Search from "@arcgis/core/widgets/Search.js";
 import { get } from "http";
@@ -77,6 +78,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
     @ViewChild('yearInput') yearInput: ElementRef;
     @ViewChild('colorInput') colorInput: ElementRef;
     constructor() {
+    }
+
+
+    async ngOnInit(): Promise<void> {
+        
+        try {
+            await this.initializeMap();
+            this.loaded = this.view.ready;
+            this.mapLoadedEvent.emit(true);
+        } catch (error) {
+            console.error("Error initializing map:", error);
+        }
+        this.user_details = JSON.parse(localStorage.getItem('id'));
+        console.log('User Details:', this.user_details); // Debugging line
+
+        this.current_cars = await this.get_cars();
+        console.log('current_cars:', this.current_cars);
+
+        this.getCurrentCoordinates();
+
+        this.current_cars.forEach((car) => {
+            this.addPoint(car.location_x, car.location_y, car.car_brand, car.car_model, car.car_year, car.car_hour_price, car.car_color);
+            console.log('am adaugat', car.location_x, car.location_y);
+        });
+
     }
 
     async submit_car(brand, model, year, color, prices) {
@@ -130,27 +156,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
 
     }
-    async ngOnInit(): Promise<void> {
-        
-        try {
-            await this.initializeMap();
-            this.loaded = this.view.ready;
-            this.mapLoadedEvent.emit(true);
-        } catch (error) {
-            console.error("Error initializing map:", error);
-        }
-        this.user_details = JSON.parse(localStorage.getItem('id'));
-        console.log('User Details:', this.user_details); // Debugging line
-
-        this.current_cars = await this.get_cars();
-        console.log('current_cars:', this.current_cars);
-
-        this.current_cars.forEach((car) => {
-            this.addPoint(car.location_x, car.location_y, car.car_brand, car.car_model, car.car_year, car.car_hour_price, car.car_color);
-            console.log('am adaugat', car.location_x, car.location_y);
-        });
-
-    }
+    
 
     view_trips() {
         window.location.href = 'http://localhost:4200/view_trips';
@@ -401,6 +407,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.graphicsLayerUserPoints.add(pointGraphic);
     }
 
+    
+
 
 
     private displayRoute(data: any): void {
@@ -559,6 +567,62 @@ export class DashboardComponent implements OnInit, OnDestroy {
         if (this.view) {
             this.view.destroy();
         }
+    }
+
+    getCurrentCoordinates(): void {
+        if ("geolocation" in navigator) {
+            let latitude: number;
+            let longitude: number;
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    latitude = position.coords.latitude;
+                    longitude = position.coords.longitude;
+                    this.add_user_location(latitude, longitude);
+    
+                    console.log(`Latitude: ${latitude}, Longitude: ${longitude}`);
+                    this.addPoint
+                },
+                (error) => {
+                    console.error(`Error occurred: ${error.message}`);
+                }
+            );
+        } else {
+            console.error("Geolocation is not available in your browser.");
+        }
+
+    }
+    
+
+    private add_user_location(latitude: number, longitude: number): void {
+        const point = new Point({
+            longitude: longitude,
+            latitude: latitude
+        });
+
+        const pinSymbol = new PictureMarkerSymbol({
+            url: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="36" viewBox="0 0 24 36">
+                    <path fill="#E27728" d="M12 0C7 0 3 4 3 9c0 5.7 8.1 19.2 8.5 19.9.3.5 1.2.5 1.5 0C12.9 28.2 21 14.7 21 9c0-5-4-9-9-9z"/>
+                    <circle fill="#FFF" cx="12" cy="9" r="4"/>
+                </svg>
+            `),
+            width: "24px",
+            height: "36px",
+            yoffset: 18, // Adjust to position the pin correctly on the map
+        });
+
+        const popupTemplate = {
+            title: `User Location`,
+            content: `Latitude: ${latitude} <br> Longitude: ${longitude}`
+        };
+
+        const pointGraphic = new Graphic({
+            geometry: point,
+            symbol: pinSymbol,
+            popupTemplate: popupTemplate
+        });
+
+        this.graphicsLayerUserPoints.add(pointGraphic);
     }
 
 
